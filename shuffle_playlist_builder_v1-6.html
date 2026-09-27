@@ -1,0 +1,288 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Shuffle Playlist Builder</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b0d10;color:#f4f5f7;font:15px system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:18px 16px 14px;border-bottom:1px solid #252a31;position:sticky;top:0;background:#0b0d10f2;backdrop-filter:blur(14px);z-index:5}
+h1{font-size:21px;margin:0 0 3px}.muted{color:#9da5b1;font-size:13px}
+main{max-width:900px;margin:auto;padding:12px 12px 40px}.card{background:#14171c;border:1px solid #262b33;border-radius:14px;padding:15px;margin-bottom:12px}
+h2{font-size:16px;margin:0 0 13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;color:#aab1bc;font-size:12px;margin:9px 0 5px}
+input,button{width:100%;min-height:44px;border-radius:10px;border:1px solid #303640;background:#1b1f26;color:#fff;padding:10px;font:inherit}
+button{background:#8ab4ff;color:#07101f;border:0;font-weight:750}.secondary{background:#1b1f26;color:#fff;border:1px solid #303640}
+.primary{font-size:17px;min-height:50px;margin-top:4px}
+.range{display:grid;grid-template-columns:1fr 62px;gap:8px;align-items:center}.range input[type=range]{padding:0;min-height:30px}.number{text-align:center}
+.metric{margin:13px 0}.metric-title{display:flex;justify-content:space-between;gap:10px}.metric-title b{color:#fff}
+.help{color:#9da5b1;font-size:12px;line-height:1.4;margin-top:3px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.stat{background:#1b1f26;border-radius:10px;padding:10px}.stat b{font-size:20px;display:block}.stat span{font-size:11px;color:#9da5b1}
+.chart{height:155px;display:flex;align-items:end;gap:5px;padding:6px 2px 22px}.bar{flex:1;background:#8ab4ff;border-radius:4px 4px 0 0;min-width:8px;position:relative}.bar span{position:absolute;top:calc(100% + 5px);left:50%;transform:translateX(-50%);font-size:9px;color:#9da5b1;white-space:nowrap}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.full{grid-column:1/-1}
+.song{border-top:1px solid #292e35;padding:12px 0;display:grid;grid-template-columns:1fr auto;gap:8px}.song:first-child{border-top:0}.song b{font-size:14px}.fit{font-size:12px;font-weight:700;padding:5px 8px;border-radius:99px}.good{background:#143722;color:#75dda0}.mid{background:#3b3217;color:#f2ca72}.bad{background:#3b1d1d;color:#f18484}
+.details{color:#9da5b1;font-size:11px;margin-top:3px}.remove{width:auto;min-height:34px;padding:6px 10px;font-size:12px}
+.notice{padding:11px;border-radius:10px;background:#19222f;color:#bcd4ff;font-size:12px;line-height:1.4;margin-bottom:10px}
+canvas{width:100%;height:210px;background:#1b1f26;border-radius:10px}
+@media(max-width:600px){main{padding:8px 9px 30px}.card{padding:13px;border-radius:12px}.grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.actions{grid-template-columns:1fr}.full{grid-column:auto}h1{font-size:20px}}
+
+.spotify-box{background:#111;border:1px solid #2b2b2b;border-radius:16px;padding:16px;margin:14px 0}
+.spotify-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spotify-status{font-size:14px;color:#aaa;margin-top:9px}
+.spotify-connected{color:#b7f7c0}
+.spotify-error{color:#ff9d9d}
+.secondary{background:#222;color:#fff;border:1px solid #444}
+input[type=text]{width:100%;box-sizing:border-box;background:#151515;color:#fff;border:1px solid #444;border-radius:10px;padding:12px;font-size:16px;margin-top:7px}
+.small{font-size:12px;color:#888;line-height:1.45}.spotify-settings{margin-top:12px;color:#8f98a5;font-size:12px}.spotify-settings summary{cursor:pointer;color:#9da5b1;padding:5px 0}.spotify-settings input{margin-top:7px}
+</style>
+</head>
+<body>
+<header><h1>Shuffle Playlist Builder</h1><div class="muted">Build a playlist where random shuffle still feels like it belongs together.</div></header>
+<main>
+
+<div class="card">
+<h2>1. What should this playlist feel like?</h2>
+<div class="grid">
+<div><label>Playlist name</label><input id="pname" placeholder="Feel Good Pop"></div>
+<div><label>Main style</label><input id="genre" placeholder="Pop"></div>
+<div><label>Other styles that fit</label><input id="subgenre" placeholder="Dance-pop, synth-pop"></div>
+<div><label>Describe the feeling</label><input id="mood" placeholder="Happy, bright, energetic"></div>
+</div>
+</div>
+
+<div class="card">
+<h2>2. Set the sound you want</h2>
+<div class="notice"><b>Valence</b> simply means how happy or sad the music feels. Low = darker/sadder. High = happier/more positive.</div>
+<div id="targets"></div>
+<div class="grid">
+<div><label>Slowest acceptable BPM</label><input id="bpmMin" type="number" value="70"></div>
+<div><label>Fastest acceptable BPM</label><input id="bpmMax" type="number" value="150"></div>
+</div>
+</div>
+
+<div class="card">
+<h2>3. Add songs to your pool</h2>
+<div class="help">Add songs you are considering. The app will analyze them and use your targets to decide which songs fit.</div>
+<div class="grid">
+<div><label>Song</label><input id="song" placeholder="Song title"></div>
+<div><label>Artist</label><input id="artist" placeholder="Artist"></div>
+<div><label>Energy — calm to intense</label><input id="energy" type="number" min="0" max="100" value="50"></div>
+<div><label>Valence — sad to happy</label><input id="valence" type="number" min="0" max="100" value="50"></div>
+<div><label>Danceability — hard to dance to → danceable</label><input id="dance" type="number" min="0" max="100" value="50"></div>
+<div><label>Acousticness — electronic → acoustic</label><input id="acoustic" type="number" min="0" max="100" value="50"></div>
+<div><label>BPM</label><input id="bpm" type="number" value="120"></div>
+<div><label>Popularity 0–100</label><input id="pop" type="number" value="50"></div>
+<div><label>Release year</label><input id="year" type="number" value="2025"></div>
+<div><label>Genre</label><input id="sgenre" placeholder="Pop"></div>
+</div>
+<div class="actions">
+<button class="full" onclick="addSong()">Add song to pool</button>
+<button class="secondary" onclick="loadDemo()">Load example songs</button>
+<button class="secondary" onclick="clearSongs()">Clear pool</button>
+</div>
+</div>
+
+<div class="card">
+<div class="spotify-box">
+  <h2 style="margin-top:0">Spotify</h2>
+  <p class="muted">Connect Spotify and let Spotify handle the login. You will not enter your Spotify password here.</p>
+  <div class="spotify-row" style="margin-top:12px">
+    <button class="primary" id="spotifyConnectBtn" onclick="connectSpotify()">Connect Spotify</button>
+    <button class="secondary" id="spotifyDisconnectBtn" onclick="disconnectSpotify()" style="display:none">Disconnect</button>
+  </div>
+  <div id="spotifyStatus" class="spotify-status">Not connected</div>
+  <details class="spotify-settings">
+    <summary>Connection setup</summary>
+    <label>Spotify Client ID</label>
+    <input id="spotifyClientId" type="text" placeholder="Spotify Client ID">
+    <label style="display:block;margin-top:10px">Redirect URI</label>
+    <input id="spotifyRedirectUri" type="text" placeholder="https://your-site.com/callback">
+    <div class="small">This is developer setup, not your Spotify login. The redirect URI must exactly match the one registered in Spotify. Normal web apps need HTTPS; 127.0.0.1 is allowed for local development.</div>
+  </details>
+</div>
+
+<h2>4. Generate playlist</h2>
+<div class="help">Generation ranks your song pool by how well each song matches your playlist DNA. Nothing is sequenced for DJ mixing.</div>
+<button class="primary" onclick="generate()">Generate playlist</button>
+</div>
+
+<div class="card">
+<h2>Your generated playlist</h2>
+<div id="generated"><div class="muted">Add songs, then tap Generate playlist.</div></div>
+</div>
+
+<div class="card">
+<h2>Playlist health</h2>
+<div class="stats">
+<div class="stat"><b id="count">0</b><span>Songs in pool</span></div>
+<div class="stat"><b id="fitAvg">—</b><span>Average fit</span></div>
+<div class="stat"><b id="outliers">0</b><span>Weak fits</span></div>
+<div class="stat"><b id="artists">0</b><span>Artists</span></div>
+</div>
+</div>
+
+<div class="grid">
+<div class="card"><h2>Energy distribution</h2><div id="energyChart" class="chart"></div></div>
+<div class="card"><h2>Mood distribution</h2><div id="valenceChart" class="chart"></div></div>
+</div>
+
+<div class="card"><h2>Playlist DNA</h2><canvas id="radar" width="700" height="360"></canvas></div>
+
+<div class="card">
+<h2>Song pool</h2><div id="songs"></div><div id="empty" class="muted">No songs yet.</div>
+</div>
+</main>
+<script>
+const metrics=['energy','valence','dance','acoustic'];
+const names={energy:'Energy',valence:'Mood',dance:'Danceability',acoustic:'Acoustic sound'};
+const targets={energy:[30,80],valence:[40,90],dance:[40,90],acoustic:[0,70]};
+let songs=[],generated=false;
+function makeTargets(){
+document.getElementById('targets').innerHTML=metrics.map(m=>`
+<div class="metric"><div class="metric-title"><span>${names[m]}</span><b id="${m}t">${targets[m][0]}–${targets[m][1]}</b></div>
+<div class="help">${m==='energy'?'How calm or intense?':m==='valence'?'How sad or happy?':m==='dance'?'How danceable?':'How electronic or acoustic?'}</div>
+<div class="range"><input id="${m}min" type="range" min="0" max="100" value="${targets[m][0]}" oninput="setTarget('${m}')"><input id="${m}max" class="number" type="number" min="0" max="100" value="${targets[m][1]}" oninput="setTarget('${m}')"></div></div>`).join('');
+}
+function setTarget(m){let a=+document.getElementById(m+'min').value,b=+document.getElementById(m+'max').value;if(a>b)[a,b]=[b,a];targets[m]=[a,b];document.getElementById(m+'t').textContent=a+'–'+b;render()}
+function fit(s){
+let score=100;
+for(let m of metrics){let [a,b]=targets[m],v=s[m];if(v<a)score-=(a-v)*1.15;else if(v>b)score-=(v-b)*1.15}
+let lo=+document.getElementById('bpmMin').value||40,hi=+document.getElementById('bpmMax').value||200;
+if(s.bpm<lo||s.bpm>hi)score-=10;
+let g=document.getElementById('genre').value.trim().toLowerCase();
+if(g&&s.genre&&s.genre.toLowerCase().indexOf(g)<0)score-=5;
+return Math.max(0,Math.min(100,Math.round(score)));
+}
+function addSong(){
+songs.push({id:Date.now()+Math.random(),song:v('song')||'Untitled',artist:v('artist')||'Unknown',genre:v('sgenre'),energy:n('energy'),valence:n('valence'),dance:n('dance'),acoustic:n('acoustic'),bpm:n('bpm'),pop:n('pop'),year:n('year')});
+document.getElementById('song').value='';render();
+}
+function v(id){return document.getElementById(id).value}
+function n(id){return +document.getElementById(id).value}
+function removeSong(id){songs=songs.filter(s=>s.id!==id);generated=false;render()}
+function clearSongs(){songs=[];generated=false;render()}
+function generate(){generated=true;render();document.getElementById('generated').scrollIntoView({behavior:'smooth',block:'start'})}
+function render(){
+let fs=songs.map(fit),avg=fs.length?Math.round(fs.reduce((a,b)=>a+b,0)/fs.length):null;
+document.getElementById('count').textContent=songs.length;document.getElementById('fitAvg').textContent=avg===null?'—':avg;
+document.getElementById('outliers').textContent=fs.filter(x=>x<70).length;
+document.getElementById('artists').textContent=new Set(songs.map(s=>s.artist)).size;
+if(generated){let ranked=[...songs].sort((a,b)=>fit(b)-fit(a));document.getElementById('generated').innerHTML=ranked.length?ranked.map((s,i)=>row(s,i,true)).join(''):'<div class="muted">Your pool is empty.</div>' : document.getElementById('generated').innerHTML;
+document.getElementById('songs').innerHTML=songs.map((s,i)=>row(s,i,false)).join('');
+document.getElementById('empty').style.display=songs.length?'none':'block';
+drawBars('energyChart',songs.map(s=>s.energy),['0–20','21–40','41–60','61–80','81–100']);
+drawBars('valenceChart',songs.map(s=>s.valence),['Very sad','Sad','Neutral','Happy','Very happy']);
+drawRadar();
+}
+function row(s,i,ranked){let f=fit(s),cls=f>=85?'good':f>=70?'mid':'bad';return `<div class="song"><div><b>${ranked?(i+1)+'. ':''}${esc(s.song)}</b><div class="details">${esc(s.artist)} · ${s.genre||'Genre not set'} · Energy ${s.energy} · Mood ${s.valence} · BPM ${s.bpm}</div></div><div><span class="fit ${cls}">${f}% fit</span>${!ranked?`<br><button class="secondary remove" onclick="removeSong(${s.id})">Remove</button>`:''}</div></div>`}
+function drawBars(id,vals,labels){let b=[0,0,0,0,0];vals.forEach(v=>b[Math.min(4,Math.floor(v/20))]++);let mx=Math.max(1,...b);document.getElementById(id).innerHTML=b.map((x,i)=>`<div class="bar" style="height:${Math.max(5,x/mx*125)}px"><span>${labels[i]}<br>${x}</span></div>`).join('')}
+function drawRadar(){
+let c=document.getElementById('radar'),x=c.getContext('2d'),w=c.width,h=c.height;x.clearRect(0,0,w,h);let cx=w/2,cy=h/2,r=115,vals=metrics.map(m=>songs.length?Math.round(songs.reduce((a,s)=>a+s[m],0)/songs.length):0);
+x.strokeStyle='#343a44';x.fillStyle='#aab1bc';x.font='13px system-ui';x.textAlign='center';
+for(let k=1;k<=4;k++){x.beginPath();for(let i=0;i<4;i++){let a=-Math.PI/2+i*Math.PI/2,rr=r*k/4,px=cx+Math.cos(a)*rr,py=cy+Math.sin(a)*rr;i?x.lineTo(px,py):x.moveTo(px,py)}x.closePath();x.stroke()}
+x.beginPath();vals.forEach((v,i)=>{let a=-Math.PI/2+i*Math.PI/2,rr=r*v/100,px=cx+Math.cos(a)*rr,py=cy+Math.sin(a)*rr;i?x.lineTo(px,py):x.moveTo(px,py)});x.closePath();x.strokeStyle='#8ab4ff';x.lineWidth=2;x.stroke();
+metrics.forEach((m,i)=>{let a=-Math.PI/2+i*Math.PI/2;x.fillText(names[m],cx+Math.cos(a)*(r+32),cy+Math.sin(a)*(r+32))})
+}
+function loadDemo(){songs=[
+{id:1,song:'Bright Song',artist:'Artist A',genre:'Pop',energy:82,valence:84,dance:78,acoustic:18,bpm:122,pop:72,year:2024},
+{id:2,song:'Mid Song',artist:'Artist B',genre:'Pop',energy:67,valence:72,dance:70,acoustic:30,bpm:112,pop:55,year:2021},
+{id:3,song:'Chill Song',artist:'Artist C',genre:'Pop',energy:48,valence:61,dance:52,acoustic:45,bpm:96,pop:35,year:2018},
+{id:4,song:'High Song',artist:'Artist D',genre:'Pop',energy:91,valence:88,dance:90,acoustic:8,bpm:132,pop:82,year:2025},
+{id:5,song:'Outlier Song',artist:'Artist E',genre:'Metal',energy:95,valence:15,dance:25,acoustic:20,bpm:175,pop:20,year:2010}];render()}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+makeTargets();render();
+</script>
+
+<script>
+const SPOTIFY_AUTH='https://accounts.spotify.com/authorize';
+const SPOTIFY_TOKEN='https://accounts.spotify.com/api/token';
+const SPOTIFY_SCOPES='playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-library-read';
+
+function spotifyRandomString(length=64){
+  const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  const a=new Uint8Array(length); crypto.getRandomValues(a);
+  return Array.from(a,x=>chars[x%chars.length]).join('');
+}
+async function spotifyChallenge(verifier){
+  const data=new TextEncoder().encode(verifier);
+  const digest=await crypto.subtle.digest('SHA-256',data);
+  let s='';
+  new Uint8Array(digest).forEach(b=>s+=String.fromCharCode(b));
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function spotifyConfig(){
+  return {
+    clientId:document.getElementById('spotifyClientId').value.trim(),
+    redirectUri:document.getElementById('spotifyRedirectUri').value.trim()
+  };
+}
+function spotifySetStatus(msg, cls=''){const el=document.getElementById('spotifyStatus');el.className='spotify-status '+cls;el.textContent=msg;}
+async function connectSpotify(){
+  const {clientId,redirectUri}=spotifyConfig();
+  if(!clientId || !redirectUri){spotifySetStatus('Enter your Spotify Client ID and Redirect URI first.','spotify-error');return;}
+  if(location.protocol==='file:'){
+    spotifySetStatus('This downloaded HTML file cannot receive Spotify OAuth callbacks directly. Open it through an HTTPS site or local 127.0.0.1 server.','spotify-error');
+    return;
+  }
+  const verifier=spotifyRandomString();
+  const challenge=await spotifyChallenge(verifier);
+  const state=spotifyRandomString(32);
+  localStorage.setItem('spotify_pkce_verifier',verifier);
+  localStorage.setItem('spotify_oauth_state',state);
+  localStorage.setItem('spotify_client_id',clientId);
+  localStorage.setItem('spotify_redirect_uri',redirectUri);
+  const params=new URLSearchParams({response_type:'code',client_id:clientId,scope:SPOTIFY_SCOPES,redirect_uri:redirectUri,state,code_challenge_method:'S256',code_challenge:challenge});
+  location.href=SPOTIFY_AUTH+'?'+params.toString();
+}
+async function spotifyHandleCallback(){
+  const p=new URLSearchParams(location.search);
+  const code=p.get('code'); const error=p.get('error');
+  if(!code && !error)return;
+  if(error){spotifySetStatus('Spotify authorization was not completed: '+error,'spotify-error');history.replaceState({},'',location.pathname);return;}
+  const state=p.get('state');
+  const savedState=localStorage.getItem('spotify_oauth_state');
+  if(!state || state!==savedState){spotifySetStatus('Spotify login failed: invalid authorization state.','spotify-error');return;}
+  const clientId=localStorage.getItem('spotify_client_id');
+  const redirectUri=localStorage.getItem('spotify_redirect_uri');
+  const verifier=localStorage.getItem('spotify_pkce_verifier');
+  try{
+    const body=new URLSearchParams({grant_type:'authorization_code',code,redirect_uri:redirectUri,client_id:clientId,code_verifier:verifier});
+    const r=await fetch(SPOTIFY_TOKEN,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data.error_description||'Token exchange failed');
+    localStorage.setItem('spotify_access_token',data.access_token);
+    if(data.refresh_token)localStorage.setItem('spotify_refresh_token',data.refresh_token);
+    localStorage.setItem('spotify_expires_at',String(Date.now()+((data.expires_in||3600)*1000)));
+    localStorage.removeItem('spotify_oauth_state');
+    localStorage.removeItem('spotify_pkce_verifier');
+    history.replaceState({},'',location.pathname);
+    await spotifyRefreshUI();
+  }catch(e){spotifySetStatus('Spotify connection failed: '+e.message,'spotify-error');}
+}
+async function spotifyRefreshUI(){
+  const token=localStorage.getItem('spotify_access_token');
+  if(!token){document.getElementById('spotifyDisconnectBtn').style.display='none';document.getElementById('spotifyConnectBtn').style.display='inline-block';spotifySetStatus('Not connected');return;}
+  try{
+    const r=await fetch('https://api.spotify.com/v1/me',{headers:{Authorization:'Bearer '+token}});
+    if(!r.ok)throw new Error('Token expired or invalid');
+    const me=await r.json();
+    document.getElementById('spotifyConnectBtn').style.display='none';
+    document.getElementById('spotifyDisconnectBtn').style.display='inline-block';
+    spotifySetStatus('Connected to Spotify'+(me.display_name?' as '+me.display_name:''),'spotify-connected');
+  }catch(e){localStorage.removeItem('spotify_access_token');spotifySetStatus('Not connected — reconnect Spotify.','spotify-error');}
+}
+function disconnectSpotify(){
+  ['spotify_access_token','spotify_refresh_token','spotify_expires_at','spotify_oauth_state','spotify_pkce_verifier'].forEach(k=>localStorage.removeItem(k));
+  document.getElementById('spotifyDisconnectBtn').style.display='none';document.getElementById('spotifyConnectBtn').style.display='inline-block';spotifySetStatus('Disconnected');
+}
+window.addEventListener('DOMContentLoaded',()=>{
+  const id=localStorage.getItem('spotify_client_id'); const uri=localStorage.getItem('spotify_redirect_uri');
+  if(id)document.getElementById('spotifyClientId').value=id;
+  if(uri)document.getElementById('spotifyRedirectUri').value=uri;
+  spotifyHandleCallback(); spotifyRefreshUI();
+});
+</script>
+<script>
+// Connection UI uses Spotify Authorization Code + PKCE. The Spotify login/approval page
+// opens in the browser; the app never asks for the user's Spotify password.
+</script>
+</body></html>
